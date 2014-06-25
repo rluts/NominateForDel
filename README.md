@@ -1,0 +1,4 @@
+NominateForDel
+==============
+
+Mediawiki gadget
