@@ -1,7 +1,12 @@
 /*
-* @author RLuts
+*****************************************
+* Щоб увімкнути додаток, зайдіть у ваші налаштування, відкрийте вкладку «Додатки»
+* та поставте галочку навпроти тексту «Дозволяє швидко номінувати статтю на повільне вилучення»
+* (розділ «Редагування»)
+*****************************************
+* @author RLuts & others (see: https://uk.wikipedia.org/w/index.php?title=MediaWiki:Gadget-NominateToDel.js&action=history)
 * for ukwiki only
-* @ver 1.1
+* @ver 1.2
 */
 
 //<nowiki>
@@ -22,17 +27,25 @@ if (typeof(window.NominateToDel) == 'undefined') {
 			this.addTemplateSummary = 'Статтю номіновано на вилучення ([[Вікіпедія:Додатки/NominateForDel|NominateForDel.js]])';
 			this.userTalkSummary = 'Статтю {article} номіновано на вилучення ([[Вікіпедія:Додатки/NominateForDel|NominateForDel.js]])';
 			
-			if(debug) {
+			/* Для відлагодження додатку. Прохання не вилучати!!! У режимі «debug» замість префікса «Вікіпедія:Статті-кандидати на вилучення», «User_talk:»
+			* сторінки зберігаються в наступних префіксах:
+			*/
+			if(mw.config.get('debug')) {
 				this.talkPrefix = "User:RLuts/scripttest";
 				this.userTalkPrefix = 'User:RLuts/scripttest/User_talk:';
 			}
 			
-			mw.util.addPortletLink('p-cactions', 'javascript:window.NominateToDel.showDialog();', this.nomText);
+			var ntd = this;
+			var link = mw.util.addPortletLink( 'p-cactions', '#',  this.nomText );
+			$( link ).click( function ( e ) {
+				e.preventDefault();
+				ntd.showDialog();
+			});
 		},
 		
 		showDialog: function () {
 			var ntd = this;
-			if( $( '#ntd-dialog' ).length == 0 ) {
+			if( $( '#ntd-dialog' ).length === 0 ) {
 				 $( "#mw-content-text" ).append('<div id="ntd-dialog" style="display:none;" title="' + this.nomText + '"><p style="font-size:.8em; color:red">Цей інструмент дозволяє створити нове обговорення на сторінці <a style="color:red; text-decoration:underline" href="https://uk.wikipedia.org/wiki/Вікіпедія:ВИЛ">ВП:ВИЛ</a></p>Причина:<textarea id="ntd-reasonbox" rows="8" cols="100"></textarea><div id="ntd-preview"></div></div>');
 			}
 			mw.loader.using( 'jquery.ui.dialog', function() {
@@ -58,7 +71,7 @@ if (typeof(window.NominateToDel) == 'undefined') {
 				format: 'json',
 				prop: 'text',
 				text: reason
-			}
+			};
 			$.get(mw.util.wikiScript('api'), param).done(function(data) {
 				console.log(data.parse.text['*']);
 				$('#ntd-preview').html(data.parse.text['*']);
@@ -85,7 +98,7 @@ if (typeof(window.NominateToDel) == 'undefined') {
 				format: 'json',
 				meta: 'siteinfo',
 				siprop: 'general'
-			}
+			};
 			$.get(mw.util.wikiScript('api'), param).done(function(data) {
 				curtime = data.query.general.time;
 				var reg = /([0-9]{4})-([0-9]{2})-([0-9]{2})/;
@@ -107,7 +120,10 @@ if (typeof(window.NominateToDel) == 'undefined') {
 					case "12": mon = ' грудня '; break;
 				}
 				var day = arr[3];
-				if(dayf = /0([1-9])/.exec(day)) day=dayf[1];
+				var dayreg = /0([1-9])/;
+				if(dayreg.exec(day)) {
+					day = dayreg.exec(day)[1];
+				}
 				ntd.date = day + mon + year;
 				ntd.getTalkPage(ntd.talkPrefix + "/" + day + mon + year);
 			});
@@ -123,31 +139,33 @@ if (typeof(window.NominateToDel) == 'undefined') {
 				rvlimit: '1',
 				prop: 'revisions',
 				titles: page
-			}
+			};
 			$.get(mw.util.wikiScript('api'), param).done(function(data) {
-				param.rvprop = 'content';
+				param.rvprop = 'content|timestamp';
 				param.indexpageids = '';
+				var nominatedGender = mw.user.options.get('gender') == 'female' ? 'Поставила' : 'Поставив';
 				if(data.query.pages[-1]) {
 					param.titles = ntd.preloadPage;
 					$.get(mw.util.wikiScript('api'), param).done(function(data) {
-						talkcont = data.query.pages[data.query.pageids[0]].revisions[0]['*'].split('-->')[0] + '-->\n\n== [[' + mw.config.get('wgPageName').replace(/_/g,' ') + ']] ==\n* \'\'\'Поставив:\'\'\' --~~~~\n* {{За}}:\n# ' + $.trim(ntd.reason) + ' --~~~~\n* {{Проти}}:\n* {{Утримаюсь}}:\n'
+						talkcont = data.query.pages[data.query.pageids[0]].revisions[0]['*'].split('-->')[0] + '-->\n\n== [[' + mw.config.get('wgPageName').replace(/_/g,' ') + ']] ==\n* \'\'\'' + nominatedGender + ':\'\'\' --~~~~\n* {{За}}:\n# ' + $.trim(ntd.reason) + ' --~~~~\n* {{Проти}}:\n* {{Утримаюсь}}:\n';
 						ntd.addTalk(page, talkcont);
 					});
 				} else {
 					param.titles = page;
 					$.get(mw.util.wikiScript('api'), param).done(function(data) {
-						talkcont = data.query.pages[data.query.pageids[0]].revisions[0]['*'] + '\n\n== [[' + mw.config.get('wgPageName').replace(/_/g,' ') + ']] ==\n* \'\'\'Поставив:\'\'\' --~~~~\n* {{За}}:\n# ' + $.trim(ntd.reason) + ' --~~~~\n* {{Проти}}:\n* {{Утримаюсь}}:\n'
-						ntd.addTalk(page, talkcont);
+						talkcont = data.query.pages[data.query.pageids[0]].revisions[0]['*'] + '\n\n== [[' + mw.config.get('wgPageName').replace(/_/g,' ') + ']] ==\n* \'\'\'' + nominatedGender + ':\'\'\' --~~~~\n* {{За}}:\n# ' + $.trim(ntd.reason) + ' --~~~~\n* {{Проти}}:\n* {{Утримаюсь}}:\n';
+						var timestamp = data.query.pages[data.query.pageids[0]].revisions[0].timestamp;
+						ntd.addTalk(page, talkcont, timestamp);
 					});
 				}
 			});
 		},
 		
-		addTalk: function (pgtalk, talkcont) {
+		addTalk: function (pgtalk, talkcont, timestamp) {
 			var ntd = this;
 			var t = '';
 			if(mw.config.get( 'wgNamespaceNumber' ) == 6) t = ':';
-			this.writeInPage( pgtalk, talkcont, this.summary.replace('{article}', '[[' + t + mw.config.get('wgPageName') + ']]').replace(/_/g,' '), null, null, function() {
+			this.writeInPage( pgtalk, talkcont, timestamp, this.summary.replace('{article}', '[[' + t + mw.config.get('wgPageName') + ']]').replace(/_/g,' '), null, null, function() {
 					ntd.addTemplate();
 			});
 		},
@@ -155,7 +173,7 @@ if (typeof(window.NominateToDel) == 'undefined') {
 		addTemplate: function () {
 			var ntd = this;
 			this.wait('Додається шаблон {{delete}} на сторінку ' + mw.config.get( 'wgPageName' ).replace(/_/g,' '));
-			this.writeInPage( mw.config.get( 'wgPageName' ), '{{subst:afd}}\n', this.addTemplateSummary, 'prependtext', null, function () {
+			this.writeInPage( mw.config.get( 'wgPageName' ), '{{subst:afd}}\n', '', this.addTemplateSummary, 'prependtext', null, function () {
 				ntd.getCreator();
 			});
 		},
@@ -172,7 +190,7 @@ if (typeof(window.NominateToDel) == 'undefined') {
 				rvprop: 'user',
 				indexpageids: '',
 				titles: mw.config.get ( 'wgPageName' )
-			}
+			};
 			$.get(mw.util.wikiScript('api'), param).done(function(data) {
 				if(data.query.pages[data.query.pageids[0]].revisions[0].anon === undefined && data.query.pages[data.query.pageids[0]].revisions[0].user) {
 					ntd.isOnTop(data.query.pages[data.query.pageids[0]].revisions[0].user);
@@ -192,39 +210,40 @@ if (typeof(window.NominateToDel) == 'undefined') {
 				tltemplates: 'Template:Нові_зверху',
 				indexpageids: '',
 				titles: this.userTalkPrefix + user
-			}
+			};
 			$.get(mw.util.wikiScript('api'), param).done(function(data) {
 				if(data.query.pages[data.query.pageids[0]].templates) {
-					ntd.notifyUser(user, true)
+					ntd.notifyUser(user, true);
 				} else {
-					ntd.notifyUser(user, false)
+					ntd.notifyUser(user, false);
 				}	
 			});
 		},
 		
 		notifyUser: function (user, top) {
 			var ntd = this;
-			var content;
+			var content, timestamp;
 			if(top) {
 				var param = {
 					action: 'query',
 					prop: 'revisions',
 					format: 'json',
-					rvprop: 'content',
+					rvprop: 'content|timestamp',
 					rvlimit: '1',
 					rvsection: '0',
 					titles: this.userTalkPrefix + user,
 					indexpageids: ''
-				}
+				};
 				$.get(mw.util.wikiScript('api'), param).done(function(data) {
 					content = data.query.pages[data.query.pageids[0]].revisions[0]['*'] + '\n\n{{subst:папв|' + mw.config.get( 'wgPageName' ).replace(/_/g,' ') + '|' + ntd.date + '}} --~~~~';
-					ntd.writeInPage ( ntd.userTalkPrefix + user, content, ntd.userTalkSummary.replace('{article}', '[[' + mw.config.get('wgPageName').replace(/_/g,' ') + ']]'), null, 0, function() {
+					timestamp = data.query.pages[data.query.pageids[0]].revisions[0].timestamp;
+					ntd.writeInPage ( ntd.userTalkPrefix + user, content, timestamp, ntd.userTalkSummary.replace('{article}', '[[' + mw.config.get('wgPageName').replace(/_/g,' ') + ']]'), null, 0, function() {
 						ntd.success();
 					});
 				});
 			} else {
 				content = '\n\n{{subst:папв|' + mw.config.get( 'wgPageName' ).replace(/_/g,' ') + '|' + ntd.date + '}} --~~~~';
-				ntd.writeInPage ( ntd.userTalkPrefix + user, content, ntd.userTalkSummary.replace('{article}', '[[' + mw.config.get('wgPageName') + ']]').replace(/_/g,' '), 'appendtext', null, function() {
+				ntd.writeInPage ( ntd.userTalkPrefix + user, content, '', ntd.userTalkSummary.replace('{article}', '[[' + mw.config.get('wgPageName') + ']]').replace(/_/g,' '), 'appendtext', null, function() {
 						ntd.success();
 				});
 			}
@@ -252,28 +271,62 @@ if (typeof(window.NominateToDel) == 'undefined') {
 			return (!/\S/.test(str));
 		},
 		
-		writeInPage: function ( title, content, summary, option, section, success ) {
+		writeInPage: function ( title, content, timestamp, summary, option, section, success ) {
+			var ntd = this;
 			var param = {
 				action: 'edit',
 				title: title, 
 				summary: summary, 
 				watchlist: 'watch',
+				basetimestamp: timestamp,
 				token: mw.user.tokens.get('editToken'),
 				format: 'json'
-			}
+			};
 			param[option || 'text'] = content;
 			if (section || section === 0) 
 				param.section = section;
-			$.post(mw.util.wikiScript('api'), param, function() {
-				if (typeof(success) === 'function')
+			$.post(mw.util.wikiScript('api'), param).done( function(data) {
+				if (data.hasOwnProperty('edit') && data.edit.result == 'Success') {
 					success();
+				} else if (data.hasOwnProperty('edit') && data.edit.result == 'Failure') {
+					if(data.edit.hasOwnProperty('code')) {
+						var code = data.edit.code;
+						switch(code) {
+							case 'editconflict':
+								alert('Конфлікт редагувань на сторінці ' + title + '. Відкиньте редагування, зроблені цим додатком за останні декілька секунд та спробуйте ще раз');
+								break;
+							case 'protectedtitle':
+								alert('Сторінка ' + title + ' захищена. Зв\'яжіться з адміністраторами на сторінці ВП:Запити до адміністраторів');
+								break;
+							case 'spamdetected':
+								alert('При редагуванні сторінки ' + title + ' автоматичний фільтр визначив ваш текст, як спам');
+								break;
+							case 'blocked':
+								alert('Ви заблоковані у цій вікі. Спробуйте, будь ласка, пізніше');
+								break;
+							case 'filtered':
+							case 'abusefilter-disallowed':
+								alert('Автоматичний фільтр заборонив редагування сторінки ' + title);
+								break;
+							case 'notoken':
+								alert('Неможливо отримати токен. Зверніться, будь ласка, у «Кнайпу (адміністрування)»');
+								break;
+							default:
+								alert('Невідома помилка при редагуванні сторінки ' + title + '. Відкиньте редагування, зроблені цим додатком за останні декілька секунд та спробуйте пізніше');
+								break;
+						}
+					} else if(data.edit.hasOwnProperty('captcha')) {
+						alert('API Вікіпедії повернув капчу, яку цей додаток поки що не підтримує. Можливо ви занадто часто робите редагування? Спробуйте, будь ласка, через декілька хвилин');
+					}
+					ntd.success();
+				}
 			});
 		}
-	}
+	};
 }
 //</nowiki>
 $(document).ready(function () {
-	if(mw.config.get( 'wgNamespaceNumber' ) == 0 || debug || mw.config.get( 'wgNamespaceNumber' ) == 6 || mw.config.get( 'wgNamespaceNumber' ) == 10) {
+	if(mw.config.get( 'wgNamespaceNumber' ) === 0 || debug || mw.config.get( 'wgNamespaceNumber' ) == 6 || mw.config.get( 'wgNamespaceNumber' ) == 10) {
 		NominateToDel.install();
 	}
 });
