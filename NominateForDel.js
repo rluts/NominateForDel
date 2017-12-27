@@ -147,13 +147,13 @@ if (typeof(window.NominateToDel) == 'undefined') {
 				if(data.query.pages[-1]) {
 					param.titles = ntd.preloadPage;
 					$.get(mw.util.wikiScript('api'), param).done(function(data) {
-						talkcont = data.query.pages[data.query.pageids[0]].revisions[0]['*'].split('-->')[0] + '-->\n\n== [[' + mw.config.get('wgPageName').replace(/_/g,' ') + ']] ==\n* \'\'\'' + nominatedGender + ':\'\'\' --~~~~\n* {{За}}:\n# ' + $.trim(ntd.reason) + ' --~~~~\n* {{Проти}}:\n* {{Утримаюсь}}:\n';
+						talkcont = data.query.pages[data.query.pageids[0]].revisions[0]['*'].split('-->')[0] + '-->\n\n== [[' + mw.config.get('wgPageName').replace(/_/g,' ').replace('Файл:', ':Файл:') + ']] ==\n* \'\'\'' + nominatedGender + ':\'\'\' --~~~~\n* {{За}}:\n# ' + $.trim(ntd.reason) + ' --~~~~\n* {{Проти}}:\n* {{Утримаюсь}}:\n';
 						ntd.addTalk(page, talkcont);
 					});
 				} else {
 					param.titles = page;
 					$.get(mw.util.wikiScript('api'), param).done(function(data) {
-						talkcont = data.query.pages[data.query.pageids[0]].revisions[0]['*'] + '\n\n== [[' + mw.config.get('wgPageName').replace(/_/g,' ') + ']] ==\n* \'\'\'' + nominatedGender + ':\'\'\' --~~~~\n* {{За}}:\n# ' + $.trim(ntd.reason) + ' --~~~~\n* {{Проти}}:\n* {{Утримаюсь}}:\n';
+						talkcont = data.query.pages[data.query.pageids[0]].revisions[0]['*'] + '\n\n== [[' + mw.config.get('wgPageName').replace(/_/g,' ').replace('Файл:', ':Файл:') + ']] ==\n* \'\'\'' + nominatedGender + ':\'\'\' --~~~~\n* {{За}}:\n# ' + $.trim(ntd.reason) + ' --~~~~\n* {{Проти}}:\n* {{Утримаюсь}}:\n';
 						var timestamp = data.query.pages[data.query.pageids[0]].revisions[0].timestamp;
 						ntd.addTalk(page, talkcont, timestamp);
 					});
